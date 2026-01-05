@@ -1996,7 +1996,10 @@ void DxilMDHelper::SerializeNodeProps(SmallVectorImpl<llvm::Metadata *> &MDVals,
     MDVals.push_back(Uint32ToConstMD(nodeoutput.OutputArraySize));
     MDVals.push_back(BoolToConstMD(nodeoutput.AllowSparseNodes));
     MDVals.push_back(Uint32ToConstMD(nodeoutput.RecordType.alignment));
-    MDVals.push_back(Uint32ToConstMD(nodeoutput.MaxRecordsPerNode));
+    // Only emit MaxRecordsPerNode if non-zero (SM 6.9+ feature)
+    if (nodeoutput.MaxRecordsPerNode) {
+      MDVals.push_back(Uint32ToConstMD(nodeoutput.MaxRecordsPerNode));
+    }
   }
 }
 
@@ -2059,7 +2062,10 @@ void DxilMDHelper::DeserializeNodeProps(const MDTuple *pProps, unsigned &idx,
       nodeoutput.RecordType.alignment =
           ConstMDToUint32(pProps->getOperand(idx++));
     }
-    nodeoutput.MaxRecordsPerNode = ConstMDToUint32(pProps->getOperand(idx++));
+    // MaxRecordsPerNode is optional (SM 6.9+ feature)
+    if (pProps->getNumOperands() > idx) {
+      nodeoutput.MaxRecordsPerNode = ConstMDToUint32(pProps->getOperand(idx++));
+    }
   }
 }
 
