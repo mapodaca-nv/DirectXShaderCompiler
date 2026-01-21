@@ -1101,7 +1101,7 @@ class db_dxil(object):
         for i in insts("GetGroupWaveIndex,GetGroupWaveCount"):
             i.category = "Group Wave Ops"
             i.shader_model = experimental_sm
-            i.shader_stages = ("compute", "mesh", "amplification", "library")
+            i.shader_stages = ("compute", "mesh", "amplification", "node")
             i.is_wave = True
 
         # Clustered Geometry
@@ -1150,6 +1150,19 @@ class db_dxil(object):
                 "closesthit",
                 "miss",
             )
+
+        for i in insts(
+            "CreateMatrix,FillMatrix,CopyConvertMatrix,"
+            + "MatrixLoadFromDescriptor,MatrixLoadFromMemory,"
+            + "MatrixLength,MatrixGetCoordinate,MatrixGetElement,MatrixSetElement,"
+            + "MatrixStoreToDescriptor,MatrixStoreToMemory,"
+            + "MatrixQueryAccumulatorLayout,MatrixMulOp,MatrixAccumulate,"
+            + "MatrixVecMul,MatrixVecMulAdd,"
+            + "MatrixAccumulateToDescriptor,MatrixAccumulateToMemory,"
+            + "MatrixOuterProduct"
+        ):
+            i.category = "Linear Algebra Operations"
+            i.shader_model = experimental_sm
 
     def populate_llvm_instructions(self):
         # Add instructions that map to LLVM instructions.
@@ -6263,7 +6276,7 @@ class db_dxil(object):
             "f",
             "rn",
             [
-                db_dxil_param(0, "$o", "", "operation result"),  # TODO: $vec9
+                db_dxil_param(0, "$vec9", "", "operation result"),
             ],
         )
         add_dxil_op(
@@ -6273,7 +6286,7 @@ class db_dxil(object):
             "f",
             "ro",
             [
-                db_dxil_param(0, "$o", "", "operation result"),  # TODO: $vec9
+                db_dxil_param(0, "$vec9", "", "operation result"),
                 db_dxil_param(2, "i32", "rayQueryHandle", "RayQuery handle"),
             ],
         )
@@ -6284,7 +6297,7 @@ class db_dxil(object):
             "f",
             "ro",
             [
-                db_dxil_param(0, "$o", "", "operation result"),  # TODO: $vec9
+                db_dxil_param(0, "$vec9", "", "operation result"),
                 db_dxil_param(2, "i32", "rayQueryHandle", "RayQuery handle"),
             ],
         )
@@ -6295,10 +6308,335 @@ class db_dxil(object):
             "f",
             "rn",
             [
-                db_dxil_param(0, "$o", "", "operation result"),  # TODO: $vec9
+                db_dxil_param(0, "$vec9", "", "operation result"),
                 db_dxil_param(2, "hit_object", "hitObject", "hit"),
             ],
         )
+
+        # Linear Algebra Ops
+        add_dxil_op(
+            "CreateMatrix",
+            "CreateMatrix",
+            "creates a handle to a Matrix",
+            "v",
+            "",
+            [
+                db_dxil_param(0, "matrixref", "", "operation result"),
+            ],
+        )
+
+        add_dxil_op(
+            "FillMatrix",
+            "FillMatrix",
+            "fills a matrix with a scalar value",
+            "hfwi",
+            "",
+            [
+                db_dxil_param(0, "v", "", ""),
+                db_dxil_param(2, "matrixref", "matrix", "matrix to be filled"),
+                db_dxil_param(3, "$o", "value", "value to fill matrix with"),
+            ],
+        )
+
+        add_dxil_op(
+            "CopyConvertMatrix",
+            "CopyConvertMatrix",
+            "Converts and copies the element and use type of the source matrix to the destination matrix with optional transpose",
+            "v",
+            "",
+            [
+                db_dxil_param(0, "v", "", ""),
+                db_dxil_param(2, "matrixref", "destination", "matrix to be filled"),
+                db_dxil_param(3, "matrixref", "source", "matrix to fill matrix with"),
+                db_dxil_param(4, "i1", "transpose", "should the matrix be transposed"),
+            ],
+        )
+
+        add_dxil_op(
+            "MatrixLoadFromDescriptor",
+            "MatrixLoadFromDescriptor",
+            "fills a matrix with data from a [RW]ByteAddressBuffer",
+            "v",
+            "",
+            [
+                db_dxil_param(0, "v", "", ""),
+                db_dxil_param(2, "matrixref", "matrix", "matrix to be filled"),
+                db_dxil_param(
+                    3, "res", "handle", "byte address buffer to fill matrix with"
+                ),
+                db_dxil_param(4, "i32", "offset", "starting offset in the buffer"),
+                db_dxil_param(
+                    5,
+                    "i32",
+                    "stride",
+                    "number of bytes between the start of each row or column",
+                ),
+                db_dxil_param(6, "i32", "layout", "memory layout of matrix elements"),
+            ],
+        )
+
+        add_dxil_op(
+            "MatrixLoadFromMemory",
+            "MatrixLoadFromMemory",
+            "fills a matrix with data from a groupshared array",
+            "v",  # TODO: overload needs to be updated
+            "",
+            [
+                db_dxil_param(0, "v", "", ""),
+                db_dxil_param(2, "matrixref", "matrix", "matrix to be filled"),
+                # TODO: [Ty] * addrspace(4),   ; groupshared T[M * N]
+                db_dxil_param(
+                    3, "i32", "groupsharedArr", "groupshared array to fill matrix with"
+                ),
+                db_dxil_param(4, "i32", "offset", "starting offset in the array"),
+                db_dxil_param(
+                    5,
+                    "i32",
+                    "stride",
+                    "number of bytes between the start of each row or column",
+                ),
+                db_dxil_param(6, "i32", "layout", "memory layout of matrix elements"),
+            ],
+        )
+
+        add_dxil_op(
+            "MatrixLength",
+            "MatrixLength",
+            "returns the number of elements stored in thread-local storage on the active thread for the provided matrix",
+            "v",
+            "",
+            [
+                db_dxil_param(0, "i32", "", "operation result"),
+                db_dxil_param(2, "matrixref", "matrix", "matrix to be examined"),
+            ],
+        )
+
+        add_dxil_op(
+            "MatrixGetCoordinate",
+            "MatrixGetCoordinate",
+            "returns a two element vector containing the column and row of the matrix that the thread-local index corresponds to",
+            "v",
+            "",
+            [
+                db_dxil_param(0, "i32", "", "operation result"),  # TODO: <2 x i32>
+                db_dxil_param(2, "matrixref", "matrix", "matrix to be examined"),
+                db_dxil_param(
+                    3, "i32", "threadLocalIndex", "thread-local index to be examined"
+                ),
+            ],
+        )
+
+        add_dxil_op(
+            "MatrixGetElement",
+            "MatrixGetElement",
+            "returns the element of the matrix corresponding to the provided thread-local index",
+            "hfwi",
+            "",
+            [
+                db_dxil_param(0, "$o", "", "operation result"),
+                db_dxil_param(2, "matrixref", "matrix", "matrix to be examined"),
+                db_dxil_param(
+                    3, "i32", "threadLocalIndex", "thread-local index to be examined"
+                ),
+            ],
+        )
+
+        add_dxil_op(
+            "MatrixSetElement",
+            "MatrixSetElement",
+            "sets the element of the matrix corresponding to the provided thread-local index",
+            "hfwi",
+            "",
+            [
+                db_dxil_param(0, "v", "", ""),
+                db_dxil_param(2, "matrixref", "matrix", "matrix to be examined"),
+                db_dxil_param(
+                    3, "i32", "threadLocalIndex", "thread-local index to be examined"
+                ),
+                db_dxil_param(4, "$o", "value", "value to set"),
+            ],
+        )
+
+        add_dxil_op(
+            "MatrixStoreToDescriptor",
+            "MatrixStoreToDescriptor",
+            "stores a matrix to a RWByteAddressBuffer",
+            "v",
+            "",
+            [
+                db_dxil_param(0, "v", "", ""),
+                db_dxil_param(2, "matrixref", "matrix", "matrix to be stored"),
+                db_dxil_param(3, "res", "handle", "byte address buffer to store into"),
+                db_dxil_param(4, "i32", "offset", "starting offset in the buffer"),
+                db_dxil_param(
+                    5,
+                    "i32",
+                    "stride",
+                    "number of bytes between the start of each row or column",
+                ),
+                db_dxil_param(6, "i32", "layout", "memory layout of matrix elements"),
+            ],
+        )
+
+        add_dxil_op(
+            "MatrixStoreToMemory",
+            "MatrixStoreToMemory",
+            "stores a matrix to groupshared memory",
+            "v",  # TODO: overload needs to be updated
+            "",
+            [
+                db_dxil_param(0, "v", "", ""),
+                db_dxil_param(2, "matrixref", "matrix", "matrix to be stored"),
+                # TODO: [Ty] * addrspace(4),   ; groupshared T[M * N]
+                db_dxil_param(
+                    3, "i32", "groupsharedArr", "groupshared array to store into"
+                ),
+                db_dxil_param(4, "i32", "offset", "starting offset in the array"),
+                db_dxil_param(
+                    5,
+                    "i32",
+                    "stride",
+                    "number of bytes between the start of each row or column",
+                ),
+                db_dxil_param(6, "i32", "layout", "memory layout of matrix elements"),
+            ],
+        )
+
+        add_dxil_op(
+            "MatrixQueryAccumulatorLayout",
+            "MatrixQueryAccumulatorLayout",
+            "returns comptime 0 when accumulator matrix are A layout, 1 when B layout",
+            "v",
+            "",
+            [
+                db_dxil_param(0, "i32", "", "operation result"),
+            ],
+        )
+
+        add_dxil_op(
+            "MatrixMulOp",
+            "MatrixMulOp",
+            "applies a multiplication op to matrix C using A and B as parameters",
+            "v",
+            "",
+            [
+                db_dxil_param(0, "v", "", ""),
+                db_dxil_param(2, "matrixref", "matrixA", "matrix A"),
+                db_dxil_param(3, "matrixref", "matrixB", "matrix B"),
+                db_dxil_param(4, "matrixref", "matrixC", "matrix C"),
+            ],
+        )
+
+        add_dxil_op(
+            "MatrixAccumulate",
+            "MatrixAccumulate",
+            "accumulate A or B matrix into Accumulator matrix following LHS += RHS",
+            "v",
+            "",
+            [
+                db_dxil_param(0, "v", "", ""),
+                db_dxil_param(2, "matrixref", "matrixRHS", "A or B matrix"),
+                db_dxil_param(3, "matrixref", "matrixLHS", "Accumulator matrix"),
+            ],
+        )
+
+        add_dxil_op(
+            "MatrixVecMul",
+            "MatrixVecMul",
+            "Multiplies a MxK dimension matrix and a K sized input vector",
+            "<hfwi,<hfwi",
+            "",
+            [
+                db_dxil_param(0, "$x0", "", "operation result"),
+                db_dxil_param(2, "matrixref", "matrix", "matrix to multiply"),
+                db_dxil_param(3, "$x1", "inputVector", "K dim vector to multiply"),
+                db_dxil_param(4, "i32", "interpretation", "vector interpretation type"),
+            ],
+        )
+
+        add_dxil_op(
+            "MatrixVecMulAdd",
+            "MatrixVecMulAdd",
+            "Multiplies a MxK dimension matrix and a K sized input vector then adds a M sized bias vector",
+            "<hfwi,<hfwi",  # TODO: "<hfwi,<hfwi,<hfwi"
+            "",
+            [
+                db_dxil_param(0, "$x0", "", "operation result"),
+                db_dxil_param(2, "matrixref", "matrix", "matrix to multiply"),
+                db_dxil_param(3, "$x1", "inputVector", "K dim vector to multiply"),
+                db_dxil_param(
+                    4, "i32", "inputInterpretation", "input vector interpretation type"
+                ),
+                # TODO: $x2 for biasVector
+                db_dxil_param(5, "i32", "biasVector", "M dim vector to add"),
+                db_dxil_param(
+                    6, "i32", "biasInterpretation", "bias vector interpretation type"
+                ),
+            ],
+        )
+
+        add_dxil_op(
+            "MatrixAccumulateToDescriptor",
+            "MatrixAccumulateToDescriptor",
+            "accumulates a matrix to a RWByteAddressBuffer",
+            "v",
+            "",
+            [
+                db_dxil_param(0, "v", "", ""),
+                db_dxil_param(2, "matrixref", "matrix", "matrix to be accumulated"),
+                db_dxil_param(
+                    3, "res", "handle", "byte address buffer to accumulated into"
+                ),
+                db_dxil_param(4, "i32", "offset", "starting offset in the buffer"),
+                db_dxil_param(
+                    5,
+                    "i32",
+                    "stride",
+                    "number of bytes between the start of each row or column",
+                ),
+                db_dxil_param(6, "i32", "layout", "memory layout of matrix elements"),
+            ],
+        )
+
+        add_dxil_op(
+            "MatrixAccumulateToMemory",
+            "MatrixAccumulateToMemory",
+            "accumulates a matrix to groupshared memory",
+            "v",  # TODO: overload needs to be updated
+            "",
+            [
+                db_dxil_param(0, "v", "", ""),
+                db_dxil_param(2, "matrixref", "matrix", "matrix to be accumulated"),
+                # TODO: [Ty] * addrspace(4),   ; groupshared T[M * N]
+                db_dxil_param(
+                    3, "i32", "groupsharedArr", "groupshared array to accumulate into"
+                ),
+                db_dxil_param(4, "i32", "offset", "starting offset in the array"),
+                db_dxil_param(
+                    5,
+                    "i32",
+                    "stride",
+                    "number of bytes between the start of each row or column",
+                ),
+                db_dxil_param(6, "i32", "layout", "memory layout of matrix elements"),
+            ],
+        )
+
+        add_dxil_op(
+            "MatrixOuterProduct",
+            "MatrixOuterProduct",
+            "Outer products an M sized vector and a K sized vector producing an MxK matrix",
+            "<hfwi,<hfwi",
+            "",
+            [
+                db_dxil_param(0, "v", "", ""),
+                db_dxil_param(2, "matrixref", "matrix", "matrix to fill"),
+                db_dxil_param(3, "$x0", "vectorA", "M dim vector"),
+                db_dxil_param(4, "$x1", "vectorB", "K dim vector"),
+            ],
+        )
+
+        op_table.reserve_dxil_op_range("LinAlgMatrixReserved", 3)
 
     def finalize_dxil_operations(self):
         "Finalize DXIL operations by setting properties and verifying consistency."

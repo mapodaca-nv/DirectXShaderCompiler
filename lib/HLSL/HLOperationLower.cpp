@@ -7515,9 +7515,9 @@ constexpr IntrinsicLower gLowerTable[] = {
 
     {IntrinsicOp::IOP_isnormal, TrivialIsSpecialFloat, DXIL::OpCode::IsNormal},
 
-    {IntrinsicOp::IOP_GetGroupWaveCount, EmptyLower,
+    {IntrinsicOp::IOP_GetGroupWaveCount, TranslateWaveToVal,
      DXIL::OpCode::GetGroupWaveCount},
-    {IntrinsicOp::IOP_GetGroupWaveIndex, EmptyLower,
+    {IntrinsicOp::IOP_GetGroupWaveIndex, TranslateWaveToVal,
      DXIL::OpCode::GetGroupWaveIndex},
 
     {IntrinsicOp::IOP_ClusterID, EmptyLower, DXIL::OpCode::ClusterID},
@@ -7536,6 +7536,47 @@ constexpr IntrinsicLower gLowerTable[] = {
      DXIL::OpCode::RayQuery_CommittedTriangleObjectPosition},
     {IntrinsicOp::MOP_DxHitObject_TriangleObjectPosition, EmptyLower,
      DXIL::OpCode::HitObject_TriangleObjectPosition},
+
+    {IntrinsicOp::IOP___builtin_LinAlg_CopyConvertMatrix, EmptyLower,
+     DXIL::OpCode::CopyConvertMatrix},
+    {IntrinsicOp::IOP___builtin_LinAlg_CreateMatrix, EmptyLower,
+     DXIL::OpCode::CreateMatrix},
+    {IntrinsicOp::IOP___builtin_LinAlg_FillMatrix, EmptyLower,
+     DXIL::OpCode::FillMatrix},
+    {IntrinsicOp::IOP___builtin_LinAlg_MatrixGetCoordinate, EmptyLower,
+     DXIL::OpCode::MatrixGetCoordinate},
+    {IntrinsicOp::IOP___builtin_LinAlg_MatrixGetElement, EmptyLower,
+     DXIL::OpCode::MatrixGetElement},
+    {IntrinsicOp::IOP___builtin_LinAlg_MatrixLength, EmptyLower,
+     DXIL::OpCode::MatrixLength},
+    {IntrinsicOp::IOP___builtin_LinAlg_MatrixLoadFromDescriptor, EmptyLower,
+     DXIL::OpCode::MatrixLoadFromDescriptor},
+    {IntrinsicOp::IOP___builtin_LinAlg_MatrixLoadFromMemory, EmptyLower,
+     DXIL::OpCode::MatrixLoadFromMemory},
+    {IntrinsicOp::IOP___builtin_LinAlg_MatrixSetElement, EmptyLower,
+     DXIL::OpCode::MatrixSetElement},
+    {IntrinsicOp::IOP___builtin_LinAlg_MatrixStoreToDescriptor, EmptyLower,
+     DXIL::OpCode::MatrixStoreToDescriptor},
+    {IntrinsicOp::IOP___builtin_LinAlg_MatrixStoreToMemory, EmptyLower,
+     DXIL::OpCode::MatrixStoreToMemory},
+    {IntrinsicOp::IOP___builtin_LinAlg_MatrixAccumulate, EmptyLower,
+     DXIL::OpCode::MatrixAccumulate},
+    {IntrinsicOp::IOP___builtin_LinAlg_MatrixMatrixMultiply, EmptyLower,
+     DXIL::OpCode::MatrixMulOp},
+    {IntrinsicOp::IOP___builtin_LinAlg_MatrixMatrixMultiplyAccumulate,
+     EmptyLower, DXIL::OpCode::MatrixMulOp},
+    {IntrinsicOp::IOP___builtin_LinAlg_MatrixQueryAccumulatorLayout, EmptyLower,
+     DXIL::OpCode::MatrixQueryAccumulatorLayout},
+    {IntrinsicOp::IOP___builtin_LinAlg_MatrixAccumulateToDescriptor, EmptyLower,
+     DXIL::OpCode::MatrixAccumulateToDescriptor},
+    {IntrinsicOp::IOP___builtin_LinAlg_MatrixAccumulateToMemory, EmptyLower,
+     DXIL::OpCode::MatrixAccumulateToMemory},
+    {IntrinsicOp::IOP___builtin_LinAlg_MatrixOuterProduct, EmptyLower,
+     DXIL::OpCode::MatrixOuterProduct},
+    {IntrinsicOp::IOP___builtin_LinAlg_MatrixVectorMultiply, EmptyLower,
+     DXIL::OpCode::MatrixVecMul},
+    {IntrinsicOp::IOP___builtin_LinAlg_MatrixVectorMultiplyAdd, EmptyLower,
+     DXIL::OpCode::MatrixVecMulAdd},
 };
 constexpr size_t NumLowerTableEntries =
     sizeof(gLowerTable) / sizeof(gLowerTable[0]);
@@ -7575,6 +7616,8 @@ static void TranslateBuiltinIntrinsic(CallInst *CI,
                                       bool &Translated) {
   unsigned opcode = hlsl::GetHLOpcode(CI);
   const IntrinsicLower &lower = gLowerTable[opcode];
+  DXASSERT((unsigned)lower.IntriOpcode == opcode,
+           "Intrinsic lowering table index must match intrinsic opcode.");
   Value *Result = lower.LowerFunc(CI, lower.IntriOpcode, lower.DxilOpcode,
                                   helper, pObjHelper, Translated);
   if (Result)

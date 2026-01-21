@@ -9469,6 +9469,22 @@ SpirvEmitter::processIntrinsicCallExpr(const CallExpr *callExpr) {
   case hlsl::IntrinsicOp::IOP_WaveActiveCountBits:
     retVal = processWaveCountBits(callExpr, spv::GroupOperation::Reduce);
     break;
+  case hlsl::IntrinsicOp::IOP_GetGroupWaveIndex: {
+    featureManager.requestTargetEnv(SPV_ENV_VULKAN_1_1, "GetGroupWaveIndex",
+                                    srcLoc);
+    const QualType retType = callExpr->getCallReturnType(astContext);
+    auto *var =
+        declIdMapper.getBuiltinVar(spv::BuiltIn::SubgroupId, retType, srcLoc);
+    retVal = spvBuilder.createLoad(retType, var, srcLoc, srcRange);
+  } break;
+  case hlsl::IntrinsicOp::IOP_GetGroupWaveCount: {
+    featureManager.requestTargetEnv(SPV_ENV_VULKAN_1_1, "GetGroupWaveCount",
+                                    srcLoc);
+    const QualType retType = callExpr->getCallReturnType(astContext);
+    auto *var =
+        declIdMapper.getBuiltinVar(spv::BuiltIn::NumSubgroups, retType, srcLoc);
+    retVal = spvBuilder.createLoad(retType, var, srcLoc, srcRange);
+  } break;
   case hlsl::IntrinsicOp::IOP_WaveActiveUSum:
   case hlsl::IntrinsicOp::IOP_WaveActiveSum:
   case hlsl::IntrinsicOp::IOP_WaveActiveUProduct:
@@ -12556,8 +12572,6 @@ SpirvEmitter::processIntrinsicAsType(const CallExpr *callExpr) {
     const Expr *arg2 = callExpr->getArg(2);
 
     SpirvInstruction *value = doExpr(arg0);
-    SpirvInstruction *lowbits = doExpr(arg1);
-    SpirvInstruction *highbits = doExpr(arg2);
 
     QualType elemType = QualType();
     uint32_t rowCount = 0;
@@ -12580,9 +12594,8 @@ SpirvEmitter::processIntrinsicAsType(const CallExpr *callExpr) {
       return nullptr;
     }
 
-    spvBuilder.createStore(lowbits, lowbitsResult, loc, range);
-    spvBuilder.createStore(highbits, highbitsResult, loc, range);
-
+    processAssignment(arg1, lowbitsResult, false, nullptr, range);
+    processAssignment(arg2, highbitsResult, false, nullptr, range);
     return nullptr;
   }
   default:
