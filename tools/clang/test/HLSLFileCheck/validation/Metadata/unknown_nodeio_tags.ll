@@ -33,19 +33,19 @@ define void @main() {
 !12 = !{!13}
 ; Arg #1: NodeIOFlags Tag (1)
 ; Arg #2: DispatchNodeInputRecord (97)
-; Arg #3: INVALID Tag (7)
+; Arg #3: INVALID Tag (8)
 ; Arg #4: RECORD type
-!13 = !{i32 1, i32 97, i32 7, !14}
+!13 = !{i32 1, i32 97, i32 8, !14}
 !14 = !{i32 0, i32 4}
 !15 = !{!16, !18}
 ; Arg #1: NodeIOFlags Tag (1)
 ; Arg #2: NodeOutput (6)
 ; Arg #3: INVALID Tag (66)
 ; Arg #4: Type node
-; Arg #5: NodeMaxRecords Tag (3)
+; Arg #5: INVALID Tag (333)
 ; Arg #6: value of 7
-; Arg #9: NodeOutputID Tag (0)
-; Arg #10: output node
+; Arg #7: NodeOutputID Tag (0)
+; Arg #8: output node
 !16 = !{i32 1, i32 6, i32 66, !14, i32 333, i32 7, i32 0, !17}
 !17 = !{!"myFascinatingNode", i32 0}
 
