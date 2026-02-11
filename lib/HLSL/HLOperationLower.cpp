@@ -7577,6 +7577,9 @@ constexpr IntrinsicLower gLowerTable[] = {
      DXIL::OpCode::MatrixVecMul},
     {IntrinsicOp::IOP___builtin_LinAlg_MatrixVectorMultiplyAdd, EmptyLower,
      DXIL::OpCode::MatrixVecMulAdd},
+     
+    {IntrinsicOp::IOP_GetCurrentLoopIterationIndex, TrivialNoArgOperation,
+     DXIL::OpCode::GetCurrentLoopIterationIndex},
 };
 constexpr size_t NumLowerTableEntries =
     sizeof(gLowerTable) / sizeof(gLowerTable[0]);

@@ -1055,6 +1055,18 @@ def HLSLNodeMaxRecursionDepth : InheritableAttr {
   let Documentation = [Undocumented];
 }
 
+def HLSLNodeMaxLoopIterations : InheritableAttr {
+  let Spellings = [CXX11<"", "nodemaxloopiterations", 2017>];
+  let Args = [UnsignedArgument<"Count">];
+  let Documentation = [Undocumented];
+}
+
+def HLSLNodeMaxRecordsPerLoopIteration : InheritableAttr {
+  let Spellings = [CXX11<"", "nodemaxrecordsperloopiteration", 2017>];
+  let Args = [UnsignedArgument<"Count">];
+  let Documentation = [Undocumented];
+}
+
 def HLSLNodeTrackRWInputSharing : InheritableAttr {
   let Spellings = [CXX11<"", "nodetrackrwinputsharing", 2017>];
   let Subjects = SubjectList<[CXXRecord]>;

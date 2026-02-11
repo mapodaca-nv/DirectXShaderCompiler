@@ -1429,6 +1429,22 @@ private:
       funcAttribs.push_back(Builder.InsertRecord(nAttrib));
     }
 
+    if (props.Node.MaxLoopIterations) {
+      nAttrib = {};
+      nAttrib.AttribKind =
+          (uint32_t)RDAT::NodeFuncAttribKind::MaxLoopIterations;
+      nAttrib.MaxLoopIterations = props.Node.MaxLoopIterations;
+      funcAttribs.push_back(Builder.InsertRecord(nAttrib));
+    }
+
+    if (props.Node.MaxRecordsPerLoopIteration) {
+      nAttrib = {};
+      nAttrib.AttribKind =
+          (uint32_t)RDAT::NodeFuncAttribKind::MaxRecordsPerLoopIteration;
+      nAttrib.MaxRecordsPerLoopIteration = props.Node.MaxRecordsPerLoopIteration;
+      funcAttribs.push_back(Builder.InsertRecord(nAttrib));
+    }
+
     if (props.Node.MaxDispatchGrid[0] || props.Node.MaxDispatchGrid[1] ||
         props.Node.MaxDispatchGrid[2]) {
       nAttrib = {};

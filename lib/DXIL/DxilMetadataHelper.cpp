@@ -1925,6 +1925,16 @@ void DxilMDHelper::LoadDxilEntryProperties(const MDOperand &MDO,
       auto &Node = props.Node;
       Node.MaxRecursionDepth = ConstMDToUint32(MDO);
     } break;
+    case DxilMDHelper::kDxilNodeMaxLoopIterationsTag: {
+      hasNodeTag = true;
+      auto &Node = props.Node;
+      Node.MaxLoopIterations = ConstMDToUint32(MDO);
+    } break;
+    case DxilMDHelper::kDxilNodeMaxRecordsPerLoopIterationTag: {
+      hasNodeTag = true;
+      auto &Node = props.Node;
+      Node.MaxRecordsPerLoopIteration = ConstMDToUint32(MDO);
+    } break;
     case DxilMDHelper::kDxilNodeInputsTag: {
       hasNodeTag = true;
       const MDTuple *pNodeInputs = dyn_cast<MDTuple>(MDO.get());
@@ -2779,6 +2789,18 @@ void DxilMDHelper::EmitDxilNodeState(std::vector<llvm::Metadata *> &MDVals,
     MDVals.emplace_back(
         Uint32ToConstMD(DxilMDHelper::kDxilNodeMaxRecursionDepthTag));
     MDVals.emplace_back(Uint32ToConstMD(Node.MaxRecursionDepth));
+  }
+
+  if (Node.MaxLoopIterations) {
+    MDVals.emplace_back(
+        Uint32ToConstMD(DxilMDHelper::kDxilNodeMaxLoopIterationsTag));
+    MDVals.emplace_back(Uint32ToConstMD(Node.MaxLoopIterations));
+  }
+
+  if (Node.MaxRecordsPerLoopIteration) {
+    MDVals.emplace_back(
+        Uint32ToConstMD(DxilMDHelper::kDxilNodeMaxRecordsPerLoopIterationTag));
+    MDVals.emplace_back(Uint32ToConstMD(Node.MaxRecordsPerLoopIteration));
   }
 
   if (props.InputNodes.size()) {

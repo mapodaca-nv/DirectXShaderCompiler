@@ -2714,6 +2714,15 @@ static const OP::OpCodeProperty CoreOps_OpCodeProps[] = {
      1,
      {{0x400}},
      {{0x3}}}, // Overloads: <hf
+
+    {OC::GetCurrentLoopIterationIndex,
+     "GetCurrentLoopIterationIndex",
+     OCC::GetCurrentLoopIterationIndex,
+     "getCurrentLoopIterationIndex",
+     Attribute::ReadOnly,
+     0,
+     {},
+     {}}, // Overloads: v
 };
 static_assert(_countof(CoreOps_OpCodeProps) ==
                   (size_t)DXIL::CoreOps::OpCode::NumOpCodes,
@@ -3858,6 +3867,13 @@ void OP::GetMinShaderModelAndMask(OpCode C, bool bWithTranslation,
     mask = SFLAG(Node);
     return;
   }
+  // Instructions: GetCurrentLoopIterationIndex=312
+  if (op == 312) {
+    major = 6;
+    minor = 9;
+    mask = SFLAG(Node);
+    return;
+  }
   // Instructions: StartVertexLocation=256, StartInstanceLocation=257
   if ((256 <= op && op <= 257)) {
     major = 6;
@@ -4059,7 +4075,9 @@ OP::OP(LLVMContext &Ctx, Module *pModule)
       m_LowPrecisionMode(DXIL::LowPrecisionMode::Undefined) {
   memset(m_pResRetType, 0, sizeof(m_pResRetType));
   memset(m_pCBufferRetType, 0, sizeof(m_pCBufferRetType));
-  memset(m_OpCodeClassCache, 0, sizeof(m_OpCodeClassCache));
+  // NOTE: m_OpCodeClassCache is properly initialized by OpCodeCacheItem
+  // constructors DO NOT memset it - SmallMapVector is not a POD type!
+  // memset(m_OpCodeClassCache, 0, sizeof(m_OpCodeClassCache));
 
   m_pHandleType = GetOrCreateStructType(m_Ctx, Type::getInt8PtrTy(m_Ctx),
                                         "dx.types.Handle", pModule);
@@ -6062,6 +6080,10 @@ Function *OP::GetOpFunc(OpCode opCode, Type *pOverloadType) {
     A(pI32);
     A(pI32);
     break;
+  case OpCode::GetCurrentLoopIterationIndex:
+    A(pI32);
+    A(pI32);
+    break;
 
     // Comparison Samples
   case OpCode::SampleCmpGrad:
@@ -6950,6 +6972,7 @@ llvm::Type *OP::GetOverloadType(OpCode opCode, llvm::Function *F) {
   case OpCode::AnnotateNodeRecordHandle:
   case OpCode::NodeOutputIsValid:
   case OpCode::GetRemainingRecursionLevels:
+  case OpCode::GetCurrentLoopIterationIndex:
   case OpCode::AllocateRayQuery2:
   case OpCode::ReservedA0:
   case OpCode::ReservedA1:

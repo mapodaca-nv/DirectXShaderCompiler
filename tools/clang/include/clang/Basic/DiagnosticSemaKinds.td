@@ -7981,6 +7981,32 @@ def err_hlsl_incompatible_dispatchgrid_semantic_type : Error<
    "SV_DispatchGrid can only be applied to a declaration of unsigned 32 or 16-bit integer scalar, vector, or array up to 3 elements, not %0">;
 def err_hlsl_maxrecursiondepth_exceeded : Error<
    "NodeMaxRecursionDepth may not exceed 32">;
+def err_hlsl_attribute_only_on_node_shader : Error<
+   "attribute '%0' only applies to node shader stage">;
+def err_hlsl_loop_attribute_only_on_node_shaders : Error<
+   "%0 is only allowed on node shaders">;
+def err_hlsl_loop_attribute_only_on_node_functions : Error<
+   "%0 is only allowed on node shader functions">;
+def err_hlsl_intrinsic_only_in_node_shader : Error<
+   "%0 is only available in node shaders">;
+def err_hlsl_loop_attribute_invalid_launch_mode : Error<
+   "%0 is only allowed on node shaders with thread, broadcasting, or coalescing launch modes">;
+def err_hlsl_loop_iterations_requires_records_per_iteration : Error<
+   "NodeMaxLoopIterations requires NodeMaxRecordsPerLoopIteration to also be specified">;
+def err_hlsl_records_per_iteration_without_loop_iterations : Error<
+   "NodeMaxRecordsPerLoopIteration can only be specified with NodeMaxLoopIterations">;
+def err_hlsl_recursion_depth_on_loop_entry : Error<
+   "NodeMaxRecursionDepth is not allowed on loop entry nodes">;
+def err_hlsl_loop_iterations_exceeds_maximum : Error<
+   "NodeMaxLoopIterations value %0 exceeds maximum of %1">;
+def err_hlsl_records_per_loop_iteration_exceeds_maximum : Error<
+   "NodeMaxRecordsPerLoopIteration value %0 exceeds maximum of %1">;
+def err_hlsl_loop_iterations_must_be_positive : Error<
+   "NodeMaxLoopIterations value must be greater than 0">;
+def err_hlsl_records_per_loop_iteration_must_be_positive : Error<
+   "NodeMaxRecordsPerLoopIteration value must be greater than 0">;
+def err_hlsl_value_out_of_range : Error<
+   "%0 value %1 exceeds maximum allowed value of %2">;
 def err_hlsl_too_many_node_inputs : Error<
    "Node shader '%0' may not have more than one input record">;
 def err_hlsl_node_record_type : Error<

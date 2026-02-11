@@ -1023,6 +1023,10 @@ class db_dxil(object):
             self.name_idx[i].category = "Work Graph intrinsics"
             self.name_idx[i].shader_model = 6, 8
             self.name_idx[i].shader_stages = ("node",)
+        for i in "GetCurrentLoopIterationIndex".split(","):
+            self.name_idx[i].category = "Work Graph intrinsics"
+            self.name_idx[i].shader_model = 6, 9
+            self.name_idx[i].shader_stages = ("node",)
         # All barrier ops:
         for i in "Barrier".split(","):
             self.name_idx[i].category = "Synchronization"
@@ -6637,6 +6641,16 @@ class db_dxil(object):
         )
 
         op_table.reserve_dxil_op_range("LinAlgMatrixReserved", 3)
+
+        # Work Graph Loop Intrinsics (SM6.9)
+        add_dxil_op(
+            "GetCurrentLoopIterationIndex",
+            "GetCurrentLoopIterationIndex",
+            "returns the current loop iteration index",
+            "v",
+            "ro",
+            [db_dxil_param(0, "i32", "", "current loop iteration index")],
+        )
 
     def finalize_dxil_operations(self):
         "Finalize DXIL operations by setting properties and verifying consistency."

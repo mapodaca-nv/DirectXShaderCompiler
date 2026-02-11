@@ -431,7 +431,8 @@ enum class IntrinsicOp {
   IOP_usign = 355,
   MOP_InterlockedUMax = 356,
   MOP_InterlockedUMin = 357,
-  Num_Intrinsics = 425,
+  IOP_GetCurrentLoopIterationIndex = 425,
+  Num_Intrinsics = 426,
 };
 inline bool HasUnsignedIntrinsicOpcode(IntrinsicOp opcode) {
   switch (opcode) {

@@ -150,6 +150,14 @@ const unsigned kMaxWaveSize = 128;
 const unsigned kDefaultMaxVectorLength = 4;
 const unsigned kSM69MaxVectorLength = 1024;
 
+// Work Graph constants
+const unsigned kWorkGraphsMaxNodeDepthSM68 = 32;  // SM 6.8 and earlier
+const unsigned kWorkGraphsMaxNodeDepth = 48;      // SM 6.9+
+const unsigned kMaxNodeCount = (1 << 24) - 1;    // 16,777,215
+const unsigned kMaxRecursionDepth = (1 << 24) - 2;     // 16,777,214
+const unsigned kMaxLoopIterations = (1 << 24) - 2;     // 16,777,214
+const unsigned kMaxRecordsPerLoopIteration = 256;      // Same as MaxRecords limit
+
 const float kMaxMipLodBias = 15.99f;
 const float kMinMipLodBias = -16.0f;
 
@@ -1177,6 +1185,7 @@ enum class OpCode : unsigned {
                            // present in the work graph
   OutputComplete =
       241, // indicates all outputs for a given records are complete
+  GetCurrentLoopIterationIndex = 312, // returns the current loop iteration index
 
   NumOpCodes_Dxil_1_0 = 137,
   NumOpCodes_Dxil_1_1 = 139,
@@ -1187,9 +1196,9 @@ enum class OpCode : unsigned {
   NumOpCodes_Dxil_1_6 = 222,
   NumOpCodes_Dxil_1_7 = 226,
   NumOpCodes_Dxil_1_8 = 258,
-  NumOpCodes_Dxil_1_9 = 312,
+  NumOpCodes_Dxil_1_9 = 313,
 
-  NumOpCodes = 312,     // exclusive last value of enumeration
+  NumOpCodes = 313,     // exclusive last value of enumeration
   Invalid = 0xFFFFFFFF, // stable invalid OpCode value
 
   // OpCodes for extended tables follow.
@@ -1652,8 +1661,9 @@ enum class OpCodeClass : unsigned {
   IncrementOutputCount,
   NodeOutputIsValid,
   OutputComplete,
+  GetCurrentLoopIterationIndex,
 
-  NumOpClasses = 223, // exclusive last value of enumeration
+  NumOpClasses = 224, // exclusive last value of enumeration
 };
 // OPCODECLASS-ENUM:END
 

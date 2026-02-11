@@ -117,6 +117,8 @@ struct DxilFunctionProps {
     memset(&Node, 0, sizeof(Node));
     Node.LaunchType = DXIL::NodeLaunchType::Invalid;
     Node.LocalRootArgumentsTableIndex = -1;
+    Node.MaxLoopIterations = 0;
+    Node.MaxRecordsPerLoopIteration = 0;
     groupSharedLimitBytes = 0;
   }
   union {
@@ -184,6 +186,8 @@ struct DxilFunctionProps {
     unsigned DispatchGrid[3];
     unsigned MaxDispatchGrid[3];
     unsigned MaxRecursionDepth;
+    unsigned MaxLoopIterations;
+    unsigned MaxRecordsPerLoopIteration;
   } Node;
 
   DXIL::ShaderKind shaderKind;

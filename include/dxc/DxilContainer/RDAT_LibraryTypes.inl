@@ -268,6 +268,8 @@ RDAT_ENUM_START(NodeFuncAttribKind, uint32_t)
   RDAT_ENUM_VALUE(MaxDispatchGrid, 7)
   RDAT_ENUM_VALUE(Reserved_MeshNodePreview1, 8)
   RDAT_ENUM_VALUE(Reserved_MeshNodePreview2, 9)
+  RDAT_ENUM_VALUE(MaxLoopIterations, 10)
+  RDAT_ENUM_VALUE(MaxRecordsPerLoopIteration, 11)
   RDAT_ENUM_VALUE_NODEF(LastValue)
 RDAT_ENUM_END()
 
@@ -379,6 +381,14 @@ RDAT_STRUCT_TABLE(NodeShaderFuncAttrib, NodeShaderFuncAttribTable)
                     getAttribKind() ==
                         hlsl::RDAT::NodeFuncAttribKind::MaxDispatchGrid)
       RDAT_INDEX_ARRAY_REF(MaxDispatchGrid)
+    RDAT_UNION_ELIF(MaxLoopIterations,
+                    getAttribKind() ==
+                        hlsl::RDAT::NodeFuncAttribKind::MaxLoopIterations)
+      RDAT_VALUE(uint32_t, MaxLoopIterations)
+    RDAT_UNION_ELIF(MaxRecordsPerLoopIteration,
+                    getAttribKind() ==
+                        hlsl::RDAT::NodeFuncAttribKind::MaxRecordsPerLoopIteration)
+      RDAT_VALUE(uint32_t, MaxRecordsPerLoopIteration)
     RDAT_UNION_ENDIF()
   RDAT_UNION_END()
 RDAT_STRUCT_END()

@@ -321,6 +321,8 @@ public:
   static const unsigned kDxilNodeMaxDispatchGridTag = 22;
   static const unsigned kDxilRangedWaveSizeTag = 23;
   static const unsigned kDxilGroupSharedLimitTag = 24;
+  static const unsigned kDxilNodeMaxLoopIterationsTag = 25;
+  static const unsigned kDxilNodeMaxRecordsPerLoopIterationTag = 26;
 
   // Node Input/Output State.
   static const unsigned kDxilNodeOutputIDTag = 0;

@@ -12403,6 +12403,16 @@ void Sema::CheckHLSLFunctionCall(FunctionDecl *FDecl, CallExpr *TheCall) {
   case hlsl::IntrinsicOp::MOP_DxHitObject_GetAttributes:
     CheckIntersectionAttributeArg(*this, TheCall->getArg(0)->IgnoreCasts());
     break;
+  case hlsl::IntrinsicOp::IOP_GetCurrentLoopIterationIndex: {
+    // GetCurrentLoopIterationIndex is only available in node shaders
+    if (SM->GetKind() != DXIL::ShaderKind::Node && 
+        SM->GetKind() != DXIL::ShaderKind::Library) {
+      Diag(TheCall->getExprLoc(), diag::err_hlsl_intrinsic_only_in_node_shader)
+          << FDecl->getName();
+      return;
+    }
+    break;
+  }
 #ifdef ENABLE_SPIRV_CODEGEN
   case hlsl::IntrinsicOp::IOP_Vkreinterpret_pointer_cast:
     CheckVKBufferPointerCast(*this, FDecl, TheCall, false);
@@ -12968,6 +12978,19 @@ void DiagnoseEntryAttrAllowedOnStage(clang::Sema *self,
           self->Diag(pAttr->getRange().getBegin(),
                      diag::err_hlsl_attribute_unsupported_stage)
               << pAttr->getSpelling() << "node";
+        }
+        break;
+      }
+      case clang::attr::HLSLNodeMaxLoopIterations:
+      case clang::attr::HLSLNodeMaxRecordsPerLoopIteration: {
+        // Loop attributes are validated later in DiagnoseNodeEntry for library compilation
+        // Only check if we're compiling a specific non-node shader type
+        if (shaderKind != DXIL::ShaderKind::Node && shaderKind != DXIL::ShaderKind::Library) {
+          const char *attrName = (pAttr->getKind() == clang::attr::HLSLNodeMaxLoopIterations) ?
+              "NodeMaxLoopIterations" : "NodeMaxRecordsPerLoopIteration";
+          self->Diag(pAttr->getRange().getBegin(),
+                     diag::err_hlsl_loop_attribute_only_on_node_shaders)
+              << attrName;
         }
         break;
       }
@@ -15034,6 +15057,16 @@ void hlsl::HandleDeclAttributeForHLSL(Sema &S, Decl *D, const AttributeList &A,
                      diag::err_hlsl_maxrecursiondepth_exceeded)
           << declAttr->getRange();
     break;
+  case AttributeList::AT_HLSLNodeMaxLoopIterations:
+    declAttr = ::new (S.Context) HLSLNodeMaxLoopIterationsAttr(
+        A.getRange(), S.Context, ValidateAttributeIntArg(S, A),
+        A.getAttributeSpellingListIndex());
+    break;
+  case AttributeList::AT_HLSLNodeMaxRecordsPerLoopIteration:
+    declAttr = ::new (S.Context) HLSLNodeMaxRecordsPerLoopIterationAttr(
+        A.getRange(), S.Context, ValidateAttributeIntArg(S, A),
+        A.getAttributeSpellingListIndex());
+    break;
   default:
     Handled = false;
     break; // SPIRV Change: was return;
@@ -16775,6 +16808,24 @@ void hlsl::CustomPrintHLSLAttr(const clang::Attr *A, llvm::raw_ostream &Out,
     break;
   }
 
+  case clang::attr::HLSLNodeMaxLoopIterations: {
+    Attr *noconst = const_cast<Attr *>(A);
+    HLSLNodeMaxLoopIterationsAttr *ACast =
+        static_cast<HLSLNodeMaxLoopIterationsAttr *>(noconst);
+    Indent(Indentation, Out);
+    Out << "[NodeMaxLoopIterations(" << ACast->getCount() << ")]\n";
+    break;
+  }
+
+  case clang::attr::HLSLNodeMaxRecordsPerLoopIteration: {
+    Attr *noconst = const_cast<Attr *>(A);
+    HLSLNodeMaxRecordsPerLoopIterationAttr *ACast =
+        static_cast<HLSLNodeMaxRecordsPerLoopIterationAttr *>(noconst);
+    Indent(Indentation, Out);
+    Out << "[NodeMaxRecordsPerLoopIteration(" << ACast->getCount() << ")]\n";
+    break;
+  }
+
   case clang::attr::HLSLMaxRecords: {
     Attr *noconst = const_cast<Attr *>(A);
     auto *ACast = static_cast<HLSLMaxRecordsAttr *>(noconst);
@@ -17365,6 +17416,91 @@ void DiagnoseNodeEntry(Sema &S, FunctionDecl *FD, llvm::StringRef StageName,
     }
   }
 
+  // Validate loop entry node attributes
+  auto *NodeMaxLoopIterations = FD->getAttr<HLSLNodeMaxLoopIterationsAttr>();
+  auto *NodeMaxRecordsPerLoopIteration = FD->getAttr<HLSLNodeMaxRecordsPerLoopIterationAttr>();
+  auto *NodeMaxRecursionDepth = FD->getAttr<HLSLNodeMaxRecursionDepthAttr>();
+  auto *NodeIsProgramEntry = FD->getAttr<HLSLNodeIsProgramEntryAttr>();
+  
+  // Get shader model to check version requirements
+  const hlsl::ShaderModel *SM = 
+      hlsl::ShaderModel::GetByName(S.getLangOpts().HLSLProfile.c_str());
+  
+  // Check shader model version for loop attributes (requires SM 6.9+)
+  if (NodeMaxLoopIterations && !SM->IsSM69Plus()) {
+    S.Diags.Report(NodeMaxLoopIterations->getLocation(),
+                   diag::err_hlsl_attribute_in_wrong_shader_model)
+        << "NodeMaxLoopIterations"
+        << "6.9"
+        << NodeMaxLoopIterations->getRange();
+  }
+  
+  if (NodeMaxRecordsPerLoopIteration && !SM->IsSM69Plus()) {
+    S.Diags.Report(NodeMaxRecordsPerLoopIteration->getLocation(),
+                   diag::err_hlsl_attribute_in_wrong_shader_model)
+        << "NodeMaxRecordsPerLoopIteration"
+        << "6.9"
+        << NodeMaxRecordsPerLoopIteration->getRange();
+  }
+  
+  // NodeMaxRecordsPerLoopIteration without NodeMaxLoopIterations is silently ignored
+  
+  // Only validate if NodeMaxLoopIterations is present
+  if (NodeMaxLoopIterations) {
+    unsigned LoopIterCount = NodeMaxLoopIterations->getCount();
+    
+    // Check that the value is greater than 0
+    if (LoopIterCount == 0) {
+      S.Diags.Report(NodeMaxLoopIterations->getLocation(),
+                     diag::err_hlsl_loop_iterations_must_be_positive)
+          << NodeMaxLoopIterations->getRange();
+    }
+    
+    // Check that NodeMaxRecordsPerLoopIteration is also specified
+    if (!NodeMaxRecordsPerLoopIteration) {
+      S.Diags.Report(NodeMaxLoopIterations->getLocation(),
+                     diag::err_hlsl_loop_iterations_requires_records_per_iteration)
+          << NodeMaxLoopIterations->getRange();
+    }
+    
+    // Check maximum value
+    if (LoopIterCount > DXIL::kMaxLoopIterations) {
+      S.Diags.Report(NodeMaxLoopIterations->getLocation(),
+                     diag::err_hlsl_loop_iterations_exceeds_maximum)
+          << LoopIterCount
+          << DXIL::kMaxLoopIterations
+          << NodeMaxLoopIterations->getRange();
+    }
+    
+    // Loop entry nodes cannot be recursive
+    if (NodeMaxRecursionDepth && NodeMaxRecursionDepth->getCount() > 0) {
+      S.Diags.Report(NodeMaxRecursionDepth->getLocation(),
+                     diag::err_hlsl_recursion_depth_on_loop_entry)
+          << NodeMaxRecursionDepth->getRange();
+    }
+  }
+  
+  // Validate NodeMaxRecordsPerLoopIteration if present (only when NodeMaxLoopIterations is also present)
+  if (NodeMaxRecordsPerLoopIteration && NodeMaxLoopIterations) {
+    unsigned RecordsPerIterCount = NodeMaxRecordsPerLoopIteration->getCount();
+    
+    // Check that the value is greater than 0
+    if (RecordsPerIterCount == 0) {
+      S.Diags.Report(NodeMaxRecordsPerLoopIteration->getLocation(),
+                     diag::err_hlsl_records_per_loop_iteration_must_be_positive)
+          << NodeMaxRecordsPerLoopIteration->getRange();
+    }
+    
+    // Check maximum value
+    if (RecordsPerIterCount > DXIL::kMaxRecordsPerLoopIteration) {
+      S.Diags.Report(NodeMaxRecordsPerLoopIteration->getLocation(),
+                     diag::err_hlsl_records_per_loop_iteration_exceeds_maximum)
+          << RecordsPerIterCount
+          << DXIL::kMaxRecordsPerLoopIteration
+          << NodeMaxRecordsPerLoopIteration->getRange();
+    }
+  }
+
   // Dignose node output.
   for (ParmVarDecl *PD : FD->params()) {
     QualType ParamType = PD->getType().getCanonicalType();
@@ -17678,6 +17814,20 @@ void DiagnoseEntry(Sema &S, FunctionDecl *FD) {
 
   HLSLShaderAttr *shaderAttr = FD->getAttr<HLSLShaderAttr>();
   if (!shaderAttr) {
+    // Check if loop attributes are present without a shader attribute
+    if (auto *NodeMaxLoopIterations = FD->getAttr<HLSLNodeMaxLoopIterationsAttr>()) {
+      S.Diags.Report(NodeMaxLoopIterations->getLocation(),
+                     diag::err_hlsl_attribute_only_on_node_shader)
+          << "NodeMaxLoopIterations"
+          << NodeMaxLoopIterations->getRange();
+    }
+    if (auto *NodeMaxRecordsPerLoopIteration = FD->getAttr<HLSLNodeMaxRecordsPerLoopIterationAttr>()) {
+      S.Diags.Report(NodeMaxRecordsPerLoopIteration->getLocation(),
+                     diag::err_hlsl_attribute_only_on_node_shader)
+          << "NodeMaxRecordsPerLoopIteration"
+          << NodeMaxRecordsPerLoopIteration->getRange();
+    }
+    
     if (S.getLangOpts().IsHLSLLibrary)
       WarnOnEntryAttrWithoutShaderAttr(S, FD);
 
